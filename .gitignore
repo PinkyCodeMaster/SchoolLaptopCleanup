@@ -1,0 +1,32 @@
+# === Windows / System files ===
+Thumbs.db
+Desktop.ini
+
+# === Logs and reports ===
+C:/Temp/CleanupLog.txt
+C:/Temp/DriverReport.txt
+CleanupLog.txt
+DriverReport.txt
+*.log
+*.tmp
+
+# === PowerShell specific ===
+*.ps1~
+*.ps1.tmp
+
+# === Batch specific ===
+*.bat~
+*.bat.tmp
+
+# === IDE / Editor backups ===
+*.bak
+*.swp
+*.swo
+*.orig
+
+# === VS Code / Editor settings ===
+.vscode/
+*.code-workspace
+
+# === GitHub / Repo housekeeping ===
+.DS_Store

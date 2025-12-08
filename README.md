@@ -7,12 +7,14 @@ This repository contains a PowerShell script and batch wrapper designed to help 
 ## ✨ Features
 
 - 🔒 **Profile Cleanup**: Deletes all user profiles except Administrator, Default, and Public.  
+- 🧪 **Dry Run Mode**: Preview which profiles would be deleted before running live.  
 - 📜 **Group Policy Update**: Forces a `gpupdate /force` to ensure policies are applied.  
 - 🔄 **Windows Update Trigger**: Uses built‑in `wuauclt` commands to detect and install updates.  
 - 🧹 **Disk Cleanup**: Runs `cleanmgr /sagerun:1` (requires one‑time setup of cleanup options).  
 - 💽 **Defragmentation**: Runs `defrag` on the system drive (safe for HDDs, Windows auto‑optimizes SSDs).  
 - 🖱️ **Driver Report**: Generates a detailed driver list (`DriverReport.txt`) in `C:\Temp`.  
 - 🌙 **Screen Awake**: Temporarily disables screen timeout during execution, then restores settings.  
+- 📝 **Logging**: Records actions in `C:\Temp\CleanupLog.txt`.  
 
 ---
 

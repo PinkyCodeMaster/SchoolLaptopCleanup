@@ -7,7 +7,7 @@ echo ============================================
 echo Downloading latest cleanup script from GitHub...
 powershell -Command ^
   "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ^
-   try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/main/SchoolLaptopCleanup.ps1' -OutFile $env:TEMP\SchoolLaptopCleanup.ps1 -ErrorAction Stop; exit 0 } ^
+   try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/refs/heads/main/SchoolLaptopCleanup.ps1' -OutFile $env:TEMP\SchoolLaptopCleanup.ps1 -ErrorAction Stop; exit 0 } ^
    catch { Write-Output 'Download failed, using local script if available...'; exit 1 }"
 
 :: Check if download succeeded
