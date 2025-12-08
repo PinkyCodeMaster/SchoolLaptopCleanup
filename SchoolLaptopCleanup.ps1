@@ -3,6 +3,16 @@
 
 Write-Output "=== Starting School Laptop Cleanup ==="
 
+# --- Prevent screen from going dark ---
+Write-Output "Disabling screen timeout temporarily..."
+# Save current settings
+$acTimeout = (powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE).Split()[3]
+$dcTimeout = (powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE).Split()[4]
+
+# Set display timeout to 0 (never) for AC and DC power
+powercfg /change monitor-timeout-ac 0
+powercfg /change monitor-timeout-dc 0
+
 # 1. Delete all user profiles except Administrator, Default, and Public
 Get-CimInstance Win32_UserProfile | Where-Object {
     $_.LocalPath -notlike "*Administrator" -and
@@ -13,19 +23,33 @@ Get-CimInstance Win32_UserProfile | Where-Object {
     Remove-CimInstance $_
 }
 
-# 2. Trigger Windows Update using built-in commands
+# 2. Force Group Policy update
+Write-Output "Running Group Policy Update..."
+gpupdate /force
+
+# 3. Trigger Windows Update
 Write-Output "Starting Windows Update..."
-# This uses the Windows Update client directly
 Start-Process "wuauclt.exe" -ArgumentList "/detectnow" -Wait
 Start-Process "wuauclt.exe" -ArgumentList "/updatenow" -Wait
 
-# 3. Run Disk Cleanup (requires sageset configured once manually)
+# 4. Run Disk Cleanup
 Write-Output "Running Disk Cleanup..."
 cleanmgr /sagerun:1
 
-# 4. Run Defragmentation (skip if SSD)
+# 5. Run Defragmentation
 Write-Output "Running Defrag..."
 defrag C: /U /V
 
+# 6. Driver check
+Write-Output "Checking installed drivers..."
+$logPath = "C:\Temp"
+if (!(Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath | Out-Null }
+driverquery /V /FO Table > "$logPath\DriverReport.txt"
+Write-Output "Driver report saved to $logPath\DriverReport.txt"
+
+# --- Restore screen timeout settings ---
+Write-Output "Restoring screen timeout settings..."
+powercfg /change monitor-timeout-ac $acTimeout
+powercfg /change monitor-timeout-dc $dcTimeout
+
 Write-Output "=== Cleanup Complete ==="
-Pause
