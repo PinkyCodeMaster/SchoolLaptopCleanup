@@ -4,7 +4,7 @@
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-green)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow)
 
-This repository contains PowerShell scripts and a batch wrapper designed to help maintain shared school laptops. It automates common cleanup and maintenance tasks so devices stay fast, reliable, and ready for students. You can choose between a **fully automated edition** or an **interactive edition** that prompts step‑by‑step.
+This repository contains PowerShell scripts and a batch wrapper designed to help maintain shared school laptops. It automates common cleanup and maintenance tasks so devices stay fast, reliable, and ready for students. The main script now supports both **automatic** and **interactive** flows from a single entry point.
 
 ---
 
@@ -25,58 +25,61 @@ This repository contains PowerShell scripts and a batch wrapper designed to help
 
 ## 📂 Files
 
-- `SchoolLaptopCleanup.ps1` → **Automated edition** (runs all tasks in sequence, supports `-DryRun` and `-DefragPasses`).  
-- `SchoolLaptopCleanup-Interactive.ps1` → **Interactive edition** (asks Y/N for each step, validates defrag passes 1–6).  
-- `RunCleanup.bat` → Batch wrapper that downloads the latest script from GitHub and runs it safely in PowerShell.  
+- `SchoolLaptopCleanup.ps1` → **Unified edition** (automatic by default; use `-Mode Manual` for interactive prompts). Supports centralized logging via `-ServerPath` and validated defrag passes with `-DefragPasses`.
+- `RunCleanup.bat` → Batch wrapper that downloads the latest script from GitHub and runs it safely in PowerShell.
 
 ---
 
 ## 🚀 Usage
 
 ### Option 1: Run Automated Edition
-1. Download or clone this repo.  
-2. Open **PowerShell as Administrator**.  
-3. Run:  
-   Set-ExecutionPolicy Bypass -Scope Process -Force  
-   .\SchoolLaptopCleanup.ps1  
+1. Download or clone this repo.
+2. Open **PowerShell as Administrator**.
+3. Run:
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force
+   .\SchoolLaptopCleanup.ps1
+   ```
 
 ### Option 2: Run Interactive Edition
-1. Download or clone this repo.  
-2. Open **PowerShell as Administrator**.  
-3. Run:  
-   Set-ExecutionPolicy Bypass -Scope Process -Force  
-   .\SchoolLaptopCleanup-Interactive.ps1  
+1. Download or clone this repo.
+2. Open **PowerShell as Administrator**.
+3. Run:
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force
+   .\SchoolLaptopCleanup.ps1 -Mode Manual
+   ```
 
    You will be prompted step‑by‑step (Y/N) for each task, and asked how many defrag passes to run (1–6).
 
 ### Option 3: Run via Batch Wrapper
-1. Download or clone this repo.  
-2. Double‑click `RunCleanup.bat`.  
-   - It will attempt to download the latest script from GitHub.  
+1. Download or clone this repo.
+2. Double‑click `RunCleanup.bat`.
+   - It will attempt to download the latest script from GitHub.
    - If download fails, it falls back to the local copy.  
-
----
-
-## ⚙️ Dry Run Mode (Automated Edition)
-
-To preview actions without making changes, run:  
-.\SchoolLaptopCleanup.ps1 -DryRun  
-
-This will log what *would* happen without deleting profiles or running cleanup tasks.
 
 ---
 
 ## 💽 Defrag Passes (Automated Edition)
 
-By default, the automated script runs **3 passes** of defrag. You can override this with the `-DefragPasses` parameter:
+By default, the automated script runs **3 passes** of defrag. You can override this with the `-DefragPasses` parameter (validated 1–6):
 
-- Run with 3 passes (default):  
-.\SchoolLaptopCleanup.ps1  
+- Run with 3 passes (default):
+.\SchoolLaptopCleanup.ps1
 
 - Run with 5 passes:  
 .\SchoolLaptopCleanup.ps1 -DefragPasses 5  
 
 The interactive edition will ask you how many passes you want (1–6). Invalid input is skipped safely.
+
+---
+
+## 📒 Logging
+
+- Logs are stored in `C:\Temp\CleanupLog.txt` by default.
+- Specify a central UNC path (e.g., `-ServerPath \\pat-fs1\c$`) to log to a network share (logs go in `LaptopLogs\<HOSTNAME>`).
+- If the log grows beyond 5MB, it is automatically archived with a timestamp.
+- Driver reports are saved as `DriverReport.csv` alongside the selected log path.
 
 ---
 
@@ -86,14 +89,6 @@ Before using the script, configure Disk Cleanup options once manually:
 cleanmgr /sageset:1  
 
 Select the cleanup options you want. After this, the script can run them automatically with `cleanmgr /sagerun:1`.
-
----
-
-## 📒 Logging
-
-- Logs are stored in `C:\Temp\CleanupLog.txt`.  
-- If the log grows beyond 5MB, it is automatically archived with a timestamp.  
-- Driver reports are saved as `DriverReport.csv` in the same folder.  
 
 ---
 
