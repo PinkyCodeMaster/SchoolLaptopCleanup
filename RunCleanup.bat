@@ -20,18 +20,11 @@ if %errorlevel% NEQ 0 (
 echo Downloading latest cleanup script from GitHub...
 :: Use a temporary variable for the download path
 set "ScriptPath=%TEMP%\SchoolLaptopCleanup.ps1"
+:: Define the local script path relative to the batch file location
+set "LocalScriptPath=%~dp0SchoolLaptopCleanup.ps1"
 
-powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ^
- "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; ^
-  try {
-      Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/refs/heads/main/SchoolLaptopCleanup.ps1' ^
-        -OutFile '%ScriptPath%' -ErrorAction Stop; ^
-      Write-Host 'Download successful.'; ^
-      exit 0; ^
-  } catch {
-      Write-Host 'Download failed, checking for local script...'; ^
-      exit 1; ^
-  }"
+:: Attempt to download the script using a single-line PowerShell command
+powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/refs/heads/main/SchoolLaptopCleanup.ps1' -OutFile '%ScriptPath%' -ErrorAction Stop; Write-Host 'Download successful.'; exit 0; } catch { Write-Host 'Download failed, checking for local script...'; exit 1; }"
 
 :: Check the ERRORLEVEL set by the PowerShell command (0 for success, 1 for failure)
 if %ERRORLEVEL% EQU 0 (
@@ -39,9 +32,9 @@ if %ERRORLEVEL% EQU 0 (
     powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ScriptPath%"
 ) else (
     echo Attempting to run local script...
-    if exist "%~dp0SchoolLaptopCleanup.ps1" (
-        echo Running local script from same folder...
-        powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0SchoolLaptopCleanup.ps1"
+    if exist "%LocalScriptPath%" (
+        echo Running local script from same folder: %LocalScriptPath%
+        powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%LocalScriptPath%"
     ) else (
         echo.
         echo ERROR: No cleanup script found locally or via download.
@@ -54,5 +47,6 @@ if %ERRORLEVEL% EQU 0 (
 echo ============================================
 echo Cleanup finished.
 timeout /t 3 >nul
-pause
+:: Set a final exit code for automation tools to read (0 for general success)
 endlocal
+exit /b 0

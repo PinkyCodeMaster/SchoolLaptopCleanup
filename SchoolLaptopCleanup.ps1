@@ -9,7 +9,7 @@ if (-not $PSVersionTable -or -not ([Security.Principal.WindowsPrincipal][Securit
 .SYNOPSIS
     School Laptop Cleanup Script - Unified Edition
 .DESCRIPTION
-    Prompts the user to choose Automatic or Manual mode.
+    Automates common cleanup and maintenance tasks. Prompts the user to choose Automatic or Manual mode and for central logging path.
 .NOTES
     Author: PinkyCodeMaster
     License: MIT
@@ -19,7 +19,6 @@ Write-Output "=== School Laptop Cleanup ==="
 
 # --- Prevent screen from going dark ---
 Write-Output "Disabling screen timeout temporarily..."
-# Use try/catch for powercfg commands in case policy prevents them
 try {
     powercfg /change monitor-timeout-ac 0 | Out-Null
     powercfg /change monitor-timeout-dc 0 | Out-Null
@@ -29,25 +28,53 @@ try {
 
 # --- Prepare logging ---
 $hostname = $env:COMPUTERNAME
-$logPath = "C:\Temp"
-# Use try/catch for directory creation
-try {
-    if (!(Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -ErrorAction Stop | Out-Null }
-} catch {
-    Write-Error "Failed to create C:\Temp directory. Logging to file disabled."
-    $logFile = $null # Disable file logging if creation fails
+$logFile = $null # Initialize $logFile as null by default
+
+# Prompt the user for their school file server path
+Write-Output "Enter your school's file server UNC path (e.g., \\pat-fs1\c$), or leave blank for local logging only:"
+$serverInput = Read-Host "Server Path"
+
+if (-not [string]::IsNullOrEmpty($serverInput)) {
+    # User provided input. Try to use it for central logging.
+    $centralLogPath = Join-Path -Path $serverInput -ChildPath "LaptopLogs\$hostname"
+    
+    try {
+        # Check if we can create the log directory on the network share
+        if (!(Test-Path $centralLogPath)) { 
+            New-Item -ItemType Directory -Path $centralLogPath -Force -ErrorAction Stop | Out-Null 
+        }
+        
+        $logFile = "$centralLogPath\CleanupLog.txt"
+        
+        # Log rotation: archive if >5MB
+        if (Test-Path $logFile -and (Get-Item $logFile).Length -gt 5MB) {
+            $archiveName = "$centralLogPath\CleanupLog_$(Get-Date -Format yyyyMMddHHmmss).txt"
+            Rename-Item $logFile $archiveName
+        }
+
+        Add-Content $logFile "`n=== Cleanup started on $hostname at $(Get-Date) ==="
+        Write-Output "Logging to central share: $logFile"
+
+    } catch {
+        Write-Warning "Failed to access central log path ($serverInput). Falling back to local C:\Temp logging."
+        $serverInput = $null # Clear input to force local fallback logic
+    }
 }
 
-if ($logFile) {
-    $logFile = "$logPath\CleanupLog.txt"
-
-    # Log rotation: archive if >5MB
-    if (Test-Path $logFile -and (Get-Item $logFile).Length -gt 5MB) {
-        $archiveName = "$logPath\CleanupLog_$(Get-Date -Format yyyyMMddHHmmss).txt"
-        Rename-Item $logFile $archiveName
+# This 'else' covers: 
+# 1. User left the prompt blank initially.
+# 2. Network connection failed in the 'try' block above.
+if ([string]::IsNullOrEmpty($serverInput)) {
+    Write-Output "Using local logging fallback only."
+    $logPath = "C:\Temp"
+    try {
+        if (!(Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath -ErrorAction Stop | Out-Null }
+        $logFile = "$logPath\CleanupLog.txt"
+        Add-Content $logFile "`n=== Cleanup started on $hostname (LOCAL FALLBACK) at $(Get-Date) ==="
+    } catch {
+        Write-Error "Failed to set up local logging in C:\Temp. Script will continue without file logging."
+        $logFile = $null # Disable file logging entirely
     }
-
-    Add-Content $logFile "`n=== Cleanup started on $hostname at $(Get-Date) ==="
 }
 
 
@@ -152,9 +179,15 @@ function Cleanup-Defrag($passes=3) {
 
 function Cleanup-Drivers {
     try {
-        driverquery /V /FO CSV > "$logPath\DriverReport.csv"
-        Write-Output "Driver report saved to $logPath\DriverReport.csv"
-        Log-Step "DriverReport" "Success"
+        # $logPath is now defined in the main logging block fallback, ensure it is available if logging locally
+        if ($logPath) {
+             driverquery /V /FO CSV > "$logPath\DriverReport.csv"
+             Write-Output "Driver report saved to $logPath\DriverReport.csv"
+             Log-Step "DriverReport" "Success"
+        } else {
+             Write-Warning "C:\Temp path not available. Cannot generate driver report."
+             Log-Step "DriverReport" "Skipped (Path Error)"
+        }
     }
     catch { Log-Step "DriverReport" "Error" $_.Exception.Message }
 }
@@ -166,7 +199,6 @@ function Restore-ScreenTimeout {
 }
 
 # --- Main execution logic (Mode selection remains the same but calls the improved functions) ---
-# ... [The mode selection logic remains identical to your original script] ...
 
 # --- Mode selection ---
 $mode = Read-Host "Choose mode: Automatic (A) or Manual (M)"
@@ -206,15 +238,17 @@ try {
         $choice = Read-Host "Generate driver report? (Y/N)"
         if ($choice -eq "Y") { Cleanup-Drivers } else { Log-Step "DriverReport" "Skipped (User Choice)" }
 
-        Restore-ScreenTimeout
+        Restore-ScreenTimeout 
         Write-Output "=== Manual Cleanup Complete ==="
     }
-
+    
+    # --- Final Logging ---
     if ($logFile) { Add-Content $logFile "=== Cleanup completed successfully on ${hostname} at $(Get-Date) ===" }
+
 }
 catch {
     $errorMsg = $_.Exception.Message
-    Write-Output "ERROR: $errorMsg"
-    if ($logFile) { Add-Content $logFile "ERROR on ${hostname}: $errorMsg" }
+    Write-Output "CRITICAL ERROR (Main Block): $errorMsg"
+    if ($logFile) { Add-Content $logFile "CRITICAL ERROR on ${hostname}: $errorMsg" }
     Log-Step "Overall" "Error" $errorMsg
 }
