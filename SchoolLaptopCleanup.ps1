@@ -1,6 +1,6 @@
 param(
-    [string]$Mode = 'Automatic',
-    [int]$DefragPasses = 3,
+    [string]$Mode,
+    [int]$DefragPasses,
     [string]$ServerPath
 )
 
@@ -14,6 +14,15 @@ $ErrorActionPreference = 'Continue'
 $hostname = $env:COMPUTERNAME
 $script:LogFile = $null
 $script:LogRoot = $null
+
+# Apply defaults after parsing parameters for maximum compatibility with older hosts
+if (-not $PSBoundParameters.ContainsKey('Mode') -or [string]::IsNullOrWhiteSpace($Mode)) {
+    $Mode = 'Automatic'
+}
+
+if (-not $PSBoundParameters.ContainsKey('DefragPasses') -or -not $DefragPasses) {
+    $DefragPasses = 3
+}
 
 function Write-Log {
     param(
