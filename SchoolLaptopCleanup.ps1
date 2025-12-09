@@ -1,11 +1,7 @@
-#requires -Version 3.0
+# Simpler header for maximum compatibility on older PowerShell hosts
 param(
-    [ValidateSet('Automatic', 'Manual')]
     [string]$Mode = 'Automatic',
-
-    [ValidateRange(1, 6)]
     [int]$DefragPasses = 3,
-
     [string]$ServerPath
 )
 
