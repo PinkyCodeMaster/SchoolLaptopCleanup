@@ -23,8 +23,11 @@ set "ScriptPath=%TEMP%\SchoolLaptopCleanup.ps1"
 :: Define the local script path relative to the batch file location
 set "LocalScriptPath=%~dp0SchoolLaptopCleanup.ps1"
 
-:: Attempt to download the script using a single-line PowerShell command with the CORRECT URL
-powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/refs/heads/main/SchoolLaptopCleanup.ps1' -OutFile '%ScriptPath%' -ErrorAction Stop; Write-Host 'Download successful.'; exit 0; } catch { Write-Host 'Download failed, checking for local script...'; exit 1; } "
+:: Always clear any existing download so stale copies cannot run
+if exist "%ScriptPath%" del "%ScriptPath%" >nul 2>&1
+
+:: Attempt to download the script using the canonical raw URL
+powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/main/SchoolLaptopCleanup.ps1' -OutFile '%ScriptPath%' -ErrorAction Stop; Write-Host 'Download successful.'; exit 0; } catch { Write-Host 'Download failed, checking for local script...'; exit 1; } "
 
 :: Check the ERRORLEVEL set by the PowerShell command (0 for success, 1 for failure)
 if %ERRORlevel% EQU 0 (
