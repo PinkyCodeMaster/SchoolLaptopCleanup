@@ -1,3 +1,9 @@
+# Relaunch in PowerShell if opened incorrectly
+if (-not $PSVersionTable) {
+    Start-Process powershell.exe -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
+
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS

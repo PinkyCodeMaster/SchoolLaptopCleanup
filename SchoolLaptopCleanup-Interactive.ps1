@@ -1,3 +1,9 @@
+# Relaunch in PowerShell if opened incorrectly
+if (-not $PSVersionTable) {
+    Start-Process powershell.exe -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
+
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
@@ -59,10 +65,12 @@ try {
                 Add-Content $logFile '"Deleted profile","' + $_.LocalPath + '"'
             }
             Log-Step "Profiles" "Success"
-        } catch {
+        }
+        catch {
             Log-Step "Profiles" "Error" $_.Exception.Message
         }
-    } else {
+    }
+    else {
         Log-Step "Profiles" "Skipped (User Choice)"
     }
 
@@ -72,10 +80,12 @@ try {
         try {
             gpupdate /force | Out-Null
             Log-Step "GroupPolicy" "Success"
-        } catch {
+        }
+        catch {
             Log-Step "GroupPolicy" "Error" $_.Exception.Message
         }
-    } else {
+    }
+    else {
         Log-Step "GroupPolicy" "Skipped (User Choice)"
     }
 
@@ -89,16 +99,19 @@ try {
                 Start-Process "UsoClient.exe" -ArgumentList "StartInstall" -Wait
                 Write-Warning "Windows Update triggered; installation may require reboot or further cycles."
                 Log-Step "WindowsUpdate" "Success"
-            } catch {
+            }
+            catch {
                 Write-Warning "UsoClient not available, falling back to wuauclt."
                 Start-Process "wuauclt.exe" -ArgumentList "/detectnow" -Wait
                 Start-Process "wuauclt.exe" -ArgumentList "/updatenow" -Wait
                 Log-Step "WindowsUpdate" "Success (Legacy)"
             }
-        } catch {
+        }
+        catch {
             Log-Step "WindowsUpdate" "Error" $_.Exception.Message
         }
-    } else {
+    }
+    else {
         Log-Step "WindowsUpdate" "Skipped (User Choice)"
     }
 
@@ -112,10 +125,12 @@ try {
             }
             cleanmgr /sagerun:1
             Log-Step "DiskCleanup" "Success"
-        } catch {
+        }
+        catch {
             Log-Step "DiskCleanup" "Error" $_.Exception.Message
         }
-    } else {
+    }
+    else {
         Log-Step "DiskCleanup" "Skipped (User Choice)"
     }
 
@@ -129,18 +144,22 @@ try {
                 if ($driveType -eq "SSD") {
                     Write-Output "SSD detected — skipping defrag."
                     Log-Step "Defrag" "Skipped (SSD)"
-                } else {
+                }
+                else {
                     defrag C: /U /V /Passes:$passes
                     Log-Step "Defrag" "Success"
                 }
-            } else {
+            }
+            else {
                 Write-Warning "Invalid input, skipping defrag."
                 Log-Step "Defrag" "Skipped (Invalid Input)"
             }
-        } catch {
+        }
+        catch {
             Log-Step "Defrag" "Error" $_.Exception.Message
         }
-    } else {
+    }
+    else {
         Log-Step "Defrag" "Skipped (User Choice)"
     }
 
@@ -151,10 +170,12 @@ try {
             driverquery /V /FO CSV > "$logPath\DriverReport.csv"
             Write-Output "Driver report saved to $logPath\DriverReport.csv"
             Log-Step "DriverReport" "Success"
-        } catch {
+        }
+        catch {
             Log-Step "DriverReport" "Error" $_.Exception.Message
         }
-    } else {
+    }
+    else {
         Log-Step "DriverReport" "Skipped (User Choice)"
     }
 

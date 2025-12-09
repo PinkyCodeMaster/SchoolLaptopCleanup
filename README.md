@@ -11,22 +11,23 @@ This repository contains PowerShell scripts and a batch wrapper designed to help
 ## ✨ Features
 
 - 🔒 **Profile Cleanup**: Deletes all user profiles except Administrator, Default, Public, and system/service accounts (`systemprofile`, `LocalService`, `NetworkService`, `WDAGUtilityAccount`).  
-- 🧪 **Dry Run Mode**: Preview all actions before running live.  
+- 🧪 **Dry Run Mode**: Preview all actions before running live (automated edition).  
 - 📜 **Group Policy Update**: Forces a `gpupdate /force` to ensure policies are applied.  
-- 🔄 **Windows Update Trigger**: Uses built‑in `wuauclt` commands to detect and install updates.  
+- 🔄 **Windows Update Trigger**: Uses `UsoClient` with fallback to legacy `wuauclt` commands.  
 - 🧹 **Disk Cleanup**: Runs `cleanmgr /sagerun:1` (requires one‑time setup of cleanup options).  
-- 💽 **Defragmentation**: Runs `defrag` on the system drive with configurable passes.  
+- 💽 **Defragmentation**: Runs `defrag` on the system drive with configurable passes; skips SSD automatically.  
 - 🖱️ **Driver Report**: Generates a detailed driver list (`DriverReport.csv`) in `C:\Temp`.  
 - 🌙 **Screen Awake**: Temporarily disables screen timeout during execution, then restores settings.  
 - 📝 **Logging**: Records actions in `C:\Temp\CleanupLog.txt` with automatic log rotation (archives if >5MB).  
+- 🔁 **Self‑Launcher**: `.ps1` scripts relaunch themselves in PowerShell if double‑clicked, so they never open in cmd by mistake.  
 
 ---
 
 ## 📂 Files
 
-- `SchoolLaptopCleanup.ps1` → **Automated edition** (runs all tasks in sequence).  
-- `SchoolLaptopCleanup-Interactive.ps1` → **Interactive edition** (asks Y/N for each step).  
-- `RunCleanup.bat` → Batch wrapper that downloads the latest script from GitHub and runs it.  
+- `SchoolLaptopCleanup.ps1` → **Automated edition** (runs all tasks in sequence, supports `-DryRun` and `-DefragPasses`).  
+- `SchoolLaptopCleanup-Interactive.ps1` → **Interactive edition** (asks Y/N for each step, validates defrag passes 1–6).  
+- `RunCleanup.bat` → Batch wrapper that downloads the latest script from GitHub and runs it safely in PowerShell.  
 
 ---
 
@@ -46,7 +47,7 @@ This repository contains PowerShell scripts and a batch wrapper designed to help
    Set-ExecutionPolicy Bypass -Scope Process -Force  
    .\SchoolLaptopCleanup-Interactive.ps1  
 
-   You will be prompted step‑by‑step (Y/N) for each task, and asked how many defrag passes to run.
+   You will be prompted step‑by‑step (Y/N) for each task, and asked how many defrag passes to run (1–6).
 
 ### Option 3: Run via Batch Wrapper
 1. Download or clone this repo.  
@@ -75,7 +76,7 @@ By default, the automated script runs **3 passes** of defrag. You can override t
 - Run with 5 passes:  
 .\SchoolLaptopCleanup.ps1 -DefragPasses 5  
 
-The interactive edition will ask you how many passes you want (1–6).
+The interactive edition will ask you how many passes you want (1–6). Invalid input is skipped safely.
 
 ---
 
@@ -133,8 +134,9 @@ This registers the cleanup to run every Sunday as SYSTEM.
 - Always run as **Administrator**.  
 - Safe exclusions prevent deletion of system/service profiles.  
 - Works on Windows 10/11 laptops.  
-- SSDs are automatically optimized by Windows; defrag step is harmless but mostly useful for HDDs.  
+- SSDs are automatically optimized by Windows; defrag step is skipped for SSDs.  
 - Choose **Automated edition** for consistency, or **Interactive edition** for flexibility.  
+- Double‑clicking `.ps1` files is safe — they relaunch themselves in PowerShell automatically.  
 
 ---
 
