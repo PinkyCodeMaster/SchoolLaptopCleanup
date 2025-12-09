@@ -24,10 +24,13 @@ set "ScriptPath=%TEMP%\SchoolLaptopCleanup.ps1"
 set "LocalScriptPath=%~dp0SchoolLaptopCleanup.ps1"
 
 :: Attempt to download the script using a single-line PowerShell command
-powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/refs/heads/main/SchoolLaptopCleanup.ps1' -OutFile '%ScriptPath%' -ErrorAction Stop; Write-Host 'Download successful.'; exit 0; } catch { Write-Host 'Download failed, checking for local script...'; exit 1; }"
+powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; try { Invoke-WebRequest -Uri 'raw.githubusercontent.com' -OutFile '%ScriptPath%' -ErrorAction Stop; Write-Host 'Download successful.'; exit 0; } catch { Write-Host 'Download failed, checking for local script...'; exit 1; } "
+
+:: >>> ADDED PAUSE HERE TO CATCH ERRORS FROM ABOVE COMMAND <<<
+pause
 
 :: Check the ERRORLEVEL set by the PowerShell command (0 for success, 1 for failure)
-if %ERRORLEVEL% EQU 0 (
+if %ERRORlevel% EQU 0 (
     echo Running downloaded script from %TEMP%...
     powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ScriptPath%"
 ) else (
