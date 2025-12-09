@@ -32,8 +32,8 @@ powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePoin
 :: Check the ERRORLEVEL set by the PowerShell command (0 for success, 1 for failure)
 if %ERRORlevel% EQU 0 (
     echo Running downloaded script from %TEMP%...
-    :: Strip legacy CmdletBinding attribute that caused parser errors in older downloads
-    powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "try { $content = Get-Content -Path '%ScriptPath%'; $filtered = $content | Where-Object { $_ -notmatch '^\s*\[CmdletBinding\]' }; if ($filtered.Count -ne $content.Count) { $filtered | Set-Content -Path '%ScriptPath%' -Encoding UTF8; Write-Host 'Removed legacy CmdletBinding attribute from downloaded script.' } } catch { Write-Host 'Warning: Could not sanitize downloaded script - ' + $_.Exception.Message }"
+    :: Strip legacy CmdletBinding attribute that caused parser errors in older downloads (handles BOM/whitespace variants)
+    powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "try { $raw = Get-Content -Path '%ScriptPath%' -Raw; $sanitized = $raw -replace '(?im)^[\uFEFF\s]*\[CmdletBinding\]\s*\r?\n', ''; if ($sanitized -ne $raw) { Set-Content -Path '%ScriptPath%' -Value $sanitized -Encoding UTF8; Write-Host 'Removed legacy CmdletBinding attribute from downloaded script.' } } catch { Write-Host 'Warning: Could not sanitize downloaded script - ' + $_.Exception.Message }"
     powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ScriptPath%"
 ) else (
     echo Attempting to run local script...
