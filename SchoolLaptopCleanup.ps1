@@ -1,3 +1,4 @@
+#requires -Version 3.0
 [CmdletBinding()]
 param(
     [ValidateSet('Automatic', 'Manual')]
@@ -120,7 +121,7 @@ function Restore-ScreenTimeout {
     }
 }
 
-function Cleanup-Profiles {
+function Clear-StaleProfiles {
     Write-Log -Step 'Profiles' -Status 'Starting'
     $excludeSids = @('S-1-5-18', 'S-1-5-19', 'S-1-5-20')
     $excludeNames = @('Administrator', 'Default', 'Public', 'WDAGUtilityAccount')
@@ -144,7 +145,7 @@ function Cleanup-Profiles {
     }
 }
 
-function Cleanup-GroupPolicy {
+function Invoke-GroupPolicyUpdate {
     try {
         gpupdate /force | Out-Null
         Write-Log -Step 'GroupPolicy' -Status 'Success'
@@ -154,7 +155,7 @@ function Cleanup-GroupPolicy {
     }
 }
 
-function Cleanup-WindowsUpdate {
+function Invoke-WindowsUpdate {
     try {
         Start-Process 'UsoClient.exe' -ArgumentList 'StartScan' -Wait -ErrorAction Stop
         Start-Process 'UsoClient.exe' -ArgumentList 'StartDownload' -Wait -ErrorAction Stop
@@ -175,7 +176,7 @@ function Cleanup-WindowsUpdate {
     }
 }
 
-function Cleanup-Disk {
+function Invoke-DiskCleanup {
     try {
         if (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VolumeCaches')) {
             Write-Warning "Disk Cleanup options not configured. Run 'cleanmgr /sageset:1' first."
@@ -191,7 +192,7 @@ function Cleanup-Disk {
     }
 }
 
-function Cleanup-Defrag {
+function Invoke-Defrag {
     param([int]$Passes)
 
     try {
@@ -219,7 +220,7 @@ function Cleanup-Defrag {
     }
 }
 
-function Cleanup-Drivers {
+function Export-DriverReport {
     try {
         if ($script:LogRoot) {
             $reportPath = Join-Path -Path $script:LogRoot -ChildPath 'DriverReport.csv'
@@ -257,33 +258,33 @@ try {
 
     if ($selectedMode -eq 'Automatic') {
         Write-Output 'Running AUTOMATIC cleanup...'
-        Cleanup-Profiles
-        Cleanup-GroupPolicy
-        Cleanup-WindowsUpdate
-        Cleanup-Disk
-        Cleanup-Defrag -Passes $DefragPasses
-        Cleanup-Drivers
+        Clear-StaleProfiles
+        Invoke-GroupPolicyUpdate
+        Invoke-WindowsUpdate
+        Invoke-DiskCleanup
+        Invoke-Defrag -Passes $DefragPasses
+        Export-DriverReport
         Write-Output '=== Automatic Cleanup Complete ==='
     }
     else {
         Write-Output 'Running MANUAL cleanup...'
 
-        if ((Read-Host 'Delete non-system user profiles? (Y/N)').ToUpper() -eq 'Y') { Cleanup-Profiles } else { Write-Log -Step 'Profiles' -Status 'Skipped' -Message 'User choice' }
-        if ((Read-Host 'Run Group Policy Update (Y/N)').ToUpper() -eq 'Y') { Cleanup-GroupPolicy } else { Write-Log -Step 'GroupPolicy' -Status 'Skipped' -Message 'User choice' }
-        if ((Read-Host 'Trigger Windows Update (Y/N)').ToUpper() -eq 'Y') { Cleanup-WindowsUpdate } else { Write-Log -Step 'WindowsUpdate' -Status 'Skipped' -Message 'User choice' }
-        if ((Read-Host 'Run Disk Cleanup (Y/N)').ToUpper() -eq 'Y') { Cleanup-Disk } else { Write-Log -Step 'DiskCleanup' -Status 'Skipped' -Message 'User choice' }
+        if ((Read-Host 'Delete non-system user profiles? (Y/N)').ToUpper() -eq 'Y') { Clear-StaleProfiles } else { Write-Log -Step 'Profiles' -Status 'Skipped' -Message 'User choice' }
+        if ((Read-Host 'Run Group Policy Update (Y/N)').ToUpper() -eq 'Y') { Invoke-GroupPolicyUpdate } else { Write-Log -Step 'GroupPolicy' -Status 'Skipped' -Message 'User choice' }
+        if ((Read-Host 'Trigger Windows Update (Y/N)').ToUpper() -eq 'Y') { Invoke-WindowsUpdate } else { Write-Log -Step 'WindowsUpdate' -Status 'Skipped' -Message 'User choice' }
+        if ((Read-Host 'Run Disk Cleanup (Y/N)').ToUpper() -eq 'Y') { Invoke-DiskCleanup } else { Write-Log -Step 'DiskCleanup' -Status 'Skipped' -Message 'User choice' }
 
         if ((Read-Host 'Run Defrag? (Y/N)').ToUpper() -eq 'Y') {
             $manualPasses = Read-Host 'How many defrag passes (1-6)?'
             [int]$manualPassesInt = 0
             [void][int]::TryParse($manualPasses, [ref]$manualPassesInt)
-            Cleanup-Defrag -Passes $manualPassesInt
+            Invoke-Defrag -Passes $manualPassesInt
         }
         else {
             Write-Log -Step 'Defrag' -Status 'Skipped' -Message 'User choice'
         }
 
-        if ((Read-Host 'Generate driver report? (Y/N)').ToUpper() -eq 'Y') { Cleanup-Drivers } else { Write-Log -Step 'DriverReport' -Status 'Skipped' -Message 'User choice' }
+        if ((Read-Host 'Generate driver report? (Y/N)').ToUpper() -eq 'Y') { Export-DriverReport } else { Write-Log -Step 'DriverReport' -Status 'Skipped' -Message 'User choice' }
 
         Write-Output '=== Manual Cleanup Complete ==='
     }
