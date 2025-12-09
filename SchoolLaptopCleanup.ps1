@@ -152,11 +152,11 @@ try {
     Log-Step "ScreenTimeoutRestore" "Success"
 
     Write-Output "=== Cleanup Complete ==="
-    Add-Content $logFile "=== Cleanup completed successfully on $hostname at $(Get-Date) ==="
+    Add-Content $logFile "=== Cleanup completed successfully on ${hostname} at $(Get-Date) ==="
 }
 catch {
     $errorMsg = $_.Exception.Message
     Write-Output "ERROR: $errorMsg"
-    Add-Content $logFile "ERROR on $hostname: $errorMsg"
+    Add-Content $logFile "ERROR on ${hostname}: $errorMsg"
     Log-Step "Overall" "Error" $errorMsg
 }
