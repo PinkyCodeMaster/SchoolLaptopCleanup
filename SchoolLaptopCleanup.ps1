@@ -70,7 +70,12 @@ try {
                 Add-Content $logFile '"Deleted profile","' + $_.LocalPath + '"'
             }
         }
-        Log-Step "Profiles" ($DryRun ? "Skipped (DryRun)" : "Success")
+
+        if ($DryRun) {
+            Log-Step "Profiles" "Skipped (DryRun)"
+        } else {
+            Log-Step "Profiles" "Success"
+        }
     } catch {
         Log-Step "Profiles" "Error" $_.Exception.Message
     }

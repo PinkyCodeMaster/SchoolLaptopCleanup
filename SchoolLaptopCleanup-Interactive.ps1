@@ -14,8 +14,9 @@ Write-Output "=== Starting School Laptop Cleanup (Interactive Edition) ==="
 
 # --- Prevent screen from going dark ---
 Write-Output "Disabling screen timeout temporarily..."
-$acTimeout = (powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE).Split() | Select-Object -Last 1
-$dcTimeout = (powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE).Split() | Select-Object -Last 1
+# Simplify: set to 10 minutes as safe default, restore later
+$acTimeout = 10
+$dcTimeout = 10
 powercfg /change monitor-timeout-ac 0
 powercfg /change monitor-timeout-dc 0
 
@@ -62,7 +63,7 @@ try {
             Log-Step "Profiles" "Error" $_.Exception.Message
         }
     } else {
-        Log-Step "Profiles" "Skipped"
+        Log-Step "Profiles" "Skipped (User Choice)"
     }
 
     # 2. Group Policy update
@@ -75,7 +76,7 @@ try {
             Log-Step "GroupPolicy" "Error" $_.Exception.Message
         }
     } else {
-        Log-Step "GroupPolicy" "Skipped"
+        Log-Step "GroupPolicy" "Skipped (User Choice)"
     }
 
     # 3. Windows Update
@@ -86,6 +87,7 @@ try {
                 Start-Process "UsoClient.exe" -ArgumentList "StartScan" -Wait
                 Start-Process "UsoClient.exe" -ArgumentList "StartDownload" -Wait
                 Start-Process "UsoClient.exe" -ArgumentList "StartInstall" -Wait
+                Write-Warning "Windows Update triggered; installation may require reboot or further cycles."
                 Log-Step "WindowsUpdate" "Success"
             } catch {
                 Write-Warning "UsoClient not available, falling back to wuauclt."
@@ -97,7 +99,7 @@ try {
             Log-Step "WindowsUpdate" "Error" $_.Exception.Message
         }
     } else {
-        Log-Step "WindowsUpdate" "Skipped"
+        Log-Step "WindowsUpdate" "Skipped (User Choice)"
     }
 
     # 4. Disk Cleanup
@@ -114,7 +116,7 @@ try {
             Log-Step "DiskCleanup" "Error" $_.Exception.Message
         }
     } else {
-        Log-Step "DiskCleanup" "Skipped"
+        Log-Step "DiskCleanup" "Skipped (User Choice)"
     }
 
     # 5. Defrag
@@ -122,19 +124,24 @@ try {
     if ($choice -eq "Y") {
         $passes = Read-Host "How many defrag passes (1–6)?"
         try {
-            $driveType = (Get-PhysicalDisk | Where-Object DeviceID -eq 0).MediaType
-            if ($driveType -eq "SSD") {
-                Write-Output "SSD detected — skipping defrag."
-                Log-Step "Defrag" "Skipped (SSD)"
+            if ($passes -match '^[1-6]$') {
+                $driveType = (Get-PhysicalDisk | Where-Object DeviceID -eq 0).MediaType
+                if ($driveType -eq "SSD") {
+                    Write-Output "SSD detected — skipping defrag."
+                    Log-Step "Defrag" "Skipped (SSD)"
+                } else {
+                    defrag C: /U /V /Passes:$passes
+                    Log-Step "Defrag" "Success"
+                }
             } else {
-                defrag C: /U /V /Passes:$passes
-                Log-Step "Defrag" "Success"
+                Write-Warning "Invalid input, skipping defrag."
+                Log-Step "Defrag" "Skipped (Invalid Input)"
             }
         } catch {
             Log-Step "Defrag" "Error" $_.Exception.Message
         }
     } else {
-        Log-Step "Defrag" "Skipped"
+        Log-Step "Defrag" "Skipped (User Choice)"
     }
 
     # 6. Driver check
@@ -148,7 +155,7 @@ try {
             Log-Step "DriverReport" "Error" $_.Exception.Message
         }
     } else {
-        Log-Step "DriverReport" "Skipped"
+        Log-Step "DriverReport" "Skipped (User Choice)"
     }
 
     # --- Restore screen timeout settings ---
