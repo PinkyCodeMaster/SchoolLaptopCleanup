@@ -1,25 +1,16 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    School Laptop Cleanup Script - Automated Edition
+    School Laptop Cleanup Script - Interactive Edition
 .DESCRIPTION
-    Cleans up user profiles, runs group policy update, Windows Update, disk cleanup,
-    defrag (HDD only), driver report, and logs results.
-.PARAMETER DryRun
-    Preview actions without making changes.
-.PARAMETER DefragPasses
-    Number of defrag passes (default: 3).
+    Prompts the user step-by-step for each cleanup task (Y/N).
+    Allows custom defrag passes (1–6).
 .NOTES
     Author: PinkyCodeMaster
     License: MIT
 #>
 
-param(
-    [switch]$DryRun,
-    [int]$DefragPasses = 3
-)
-
-Write-Output "=== Starting School Laptop Cleanup ==="
+Write-Output "=== Starting School Laptop Cleanup (Interactive Edition) ==="
 
 # --- Prevent screen from going dark ---
 Write-Output "Disabling screen timeout temporarily..."
@@ -40,7 +31,7 @@ if (Test-Path $logFile -and (Get-Item $logFile).Length -gt 5MB) {
     Rename-Item $logFile $archiveName
 }
 
-Add-Content $logFile "`n=== Cleanup started on $hostname at $(Get-Date) ==="
+Add-Content $logFile "`n=== Interactive Cleanup started on $hostname at $(Get-Date) ==="
 
 function Log-Step($step, $status, $error="") {
     $line = "`"$hostname`","`"$step`","`"$status`",""$(Get-Date)`","`"$error`""
@@ -50,52 +41,47 @@ function Log-Step($step, $status, $error="") {
 
 try {
     # 1. Delete user profiles
-    Write-Output "Checking user profiles..."
-    try {
-        Get-CimInstance Win32_UserProfile | Where-Object {
-            $_.LocalPath -notlike "*Administrator" -and
-            $_.LocalPath -notlike "*Default*" -and
-            $_.LocalPath -notlike "*Public*" -and
-            $_.LocalPath -notlike "*systemprofile*" -and
-            $_.LocalPath -notlike "*LocalService*" -and
-            $_.LocalPath -notlike "*NetworkService*" -and
-            $_.LocalPath -notlike "*WDAGUtilityAccount*"
-        } | ForEach-Object {
-            if ($DryRun) {
-                Write-Output "[DRY RUN] Would delete profile: $($_.LocalPath)"
-                Add-Content $logFile "[DRY RUN] Would delete profile: $($_.LocalPath)"
-            } else {
+    $choice = Read-Host "Delete non-system user profiles? (Y/N)"
+    if ($choice -eq "Y") {
+        try {
+            Get-CimInstance Win32_UserProfile | Where-Object {
+                $_.LocalPath -notlike "*Administrator" -and
+                $_.LocalPath -notlike "*Default*" -and
+                $_.LocalPath -notlike "*Public*" -and
+                $_.LocalPath -notlike "*systemprofile*" -and
+                $_.LocalPath -notlike "*LocalService*" -and
+                $_.LocalPath -notlike "*NetworkService*" -and
+                $_.LocalPath -notlike "*WDAGUtilityAccount*"
+            } | ForEach-Object {
                 Write-Output "Deleting profile: $($_.LocalPath)"
                 Remove-CimInstance $_
                 Add-Content $logFile "Deleted profile: $($_.LocalPath)"
             }
+            Log-Step "Profiles" "Success"
+        } catch {
+            Log-Step "Profiles" "Error" $_.Exception.Message
         }
-        Log-Step "Profiles" ($DryRun ? "Skipped (DryRun)" : "Success")
-    } catch {
-        Log-Step "Profiles" "Error" $_.Exception.Message
+    } else {
+        Log-Step "Profiles" "Skipped"
     }
 
     # 2. Group Policy update
-    Write-Output "Running Group Policy Update..."
-    try {
-        if ($DryRun) {
-            Write-Output "[DRY RUN] Would run gpupdate /force"
-            Log-Step "GroupPolicy" "Skipped (DryRun)"
-        } else {
+    $choice = Read-Host "Run Group Policy Update (gpupdate /force)? (Y/N)"
+    if ($choice -eq "Y") {
+        try {
             gpupdate /force | Out-Null
             Log-Step "GroupPolicy" "Success"
+        } catch {
+            Log-Step "GroupPolicy" "Error" $_.Exception.Message
         }
-    } catch {
-        Log-Step "GroupPolicy" "Error" $_.Exception.Message
+    } else {
+        Log-Step "GroupPolicy" "Skipped"
     }
 
     # 3. Windows Update
-    Write-Output "Starting Windows Update..."
-    try {
-        if ($DryRun) {
-            Write-Output "[DRY RUN] Would run Windows Update"
-            Log-Step "WindowsUpdate" "Skipped (DryRun)"
-        } else {
+    $choice = Read-Host "Trigger Windows Update scan/install? (Y/N)"
+    if ($choice -eq "Y") {
+        try {
             try {
                 Start-Process "UsoClient.exe" -ArgumentList "StartScan" -Wait
                 Start-Process "UsoClient.exe" -ArgumentList "StartDownload" -Wait
@@ -107,77 +93,72 @@ try {
                 Start-Process "wuauclt.exe" -ArgumentList "/updatenow" -Wait
                 Log-Step "WindowsUpdate" "Success (Legacy)"
             }
+        } catch {
+            Log-Step "WindowsUpdate" "Error" $_.Exception.Message
         }
-    } catch {
-        Log-Step "WindowsUpdate" "Error" $_.Exception.Message
+    } else {
+        Log-Step "WindowsUpdate" "Skipped"
     }
 
     # 4. Disk Cleanup
-    Write-Output "Running Disk Cleanup..."
-    try {
-        if ($DryRun) {
-            Write-Output "[DRY RUN] Would run cleanmgr /sagerun:1"
-            Log-Step "DiskCleanup" "Skipped (DryRun)"
-        } else {
+    $choice = Read-Host "Run Disk Cleanup (cleanmgr /sagerun:1)? (Y/N)"
+    if ($choice -eq "Y") {
+        try {
             if (-not (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches")) {
                 Write-Warning "Disk Cleanup options not configured. Run 'cleanmgr /sageset:1' manually first."
                 Add-Content $logFile "WARNING: Disk Cleanup options not configured."
             }
             cleanmgr /sagerun:1
             Log-Step "DiskCleanup" "Success"
+        } catch {
+            Log-Step "DiskCleanup" "Error" $_.Exception.Message
         }
-    } catch {
-        Log-Step "DiskCleanup" "Error" $_.Exception.Message
+    } else {
+        Log-Step "DiskCleanup" "Skipped"
     }
 
     # 5. Defrag
-    Write-Output "Running Defrag..."
-    try {
-        if ($DryRun) {
-            Write-Output "[DRY RUN] Would run defrag C: /Passes:$DefragPasses"
-            Log-Step "Defrag" "Skipped (DryRun)"
-        } else {
+    $choice = Read-Host "Run Defrag? (Y/N)"
+    if ($choice -eq "Y") {
+        $passes = Read-Host "How many defrag passes (1–6)?"
+        try {
             $driveType = (Get-PhysicalDisk | Where-Object DeviceID -eq 0).MediaType
             if ($driveType -eq "SSD") {
                 Write-Output "SSD detected — skipping defrag."
                 Log-Step "Defrag" "Skipped (SSD)"
             } else {
-                defrag C: /U /V /Passes:$DefragPasses
+                defrag C: /U /V /Passes:$passes
                 Log-Step "Defrag" "Success"
             }
+        } catch {
+            Log-Step "Defrag" "Error" $_.Exception.Message
         }
-    } catch {
-        Log-Step "Defrag" "Error" $_.Exception.Message
+    } else {
+        Log-Step "Defrag" "Skipped"
     }
 
     # 6. Driver check
-    Write-Output "Checking installed drivers..."
-    try {
-        if ($DryRun) {
-            Write-Output "[DRY RUN] Would run driverquery"
-            Log-Step "DriverReport" "Skipped (DryRun)"
-        } else {
+    $choice = Read-Host "Generate driver report? (Y/N)"
+    if ($choice -eq "Y") {
+        try {
             driverquery /V /FO CSV > "$logPath\DriverReport.csv"
             Write-Output "Driver report saved to $logPath\DriverReport.csv"
             Log-Step "DriverReport" "Success"
+        } catch {
+            Log-Step "DriverReport" "Error" $_.Exception.Message
         }
-    } catch {
-        Log-Step "DriverReport" "Error" $_.Exception.Message
+    } else {
+        Log-Step "DriverReport" "Skipped"
     }
 
     # --- Restore screen timeout settings ---
     Write-Output "Restoring screen timeout settings..."
-    if ($DryRun) {
-        Write-Output "[DRY RUN] Would restore screen timeout settings"
-        Log-Step "ScreenTimeoutRestore" "Skipped (DryRun)"
-    } else {
-        powercfg /change monitor-timeout-ac $acTimeout
-        powercfg /change monitor-timeout-dc $dcTimeout
-        Log-Step "ScreenTimeoutRestore" "Success"
-    }
+    powercfg /change monitor-timeout-ac $acTimeout
+    powercfg /change monitor-timeout-dc $dcTimeout
+    Log-Step "ScreenTimeoutRestore" "Success"
 
-    Write-Output "=== Cleanup Complete ==="
-    Add-Content $logFile "=== Cleanup completed successfully on ${hostname} at $(Get-Date) ==="
+    Write-Output "=== Interactive Cleanup Complete ==="
+    Add-Content $logFile "=== Interactive Cleanup completed successfully on ${hostname} at $(Get-Date) ==="
 }
 catch {
     $errorMsg = $_.Exception.Message
