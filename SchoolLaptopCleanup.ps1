@@ -1,5 +1,4 @@
 #requires -Version 3.0
-[CmdletBinding()]
 param(
     [ValidateSet('Automatic', 'Manual')]
     [string]$Mode = 'Automatic',
