@@ -1,8 +1,4 @@
-param(
-    [string]$Mode,
-    [int]$DefragPasses,
-    [string]$ServerPath
-)
+param($Mode, $DefragPasses, $ServerPath)
 
 # Relaunch in PowerShell with Admin rights if opened incorrectly
 if (-not $PSVersionTable -or -not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
