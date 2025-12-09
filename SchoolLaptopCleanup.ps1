@@ -38,19 +38,33 @@ if (-not [string]::IsNullOrEmpty($serverInput)) {
     # User provided input. Try to use it for central logging.
     $centralLogPath = Join-Path -Path $serverInput -ChildPath "LaptopLogs\$hostname"
     
-    try {
+        try {
         # Check if we can create the log directory on the network share
         if (!(Test-Path $centralLogPath)) { 
+            # Added Write-Output here to see creation confirmation in console
+            Write-Output "Creating log directory: $centralLogPath"
             New-Item -ItemType Directory -Path $centralLogPath -Force -ErrorAction Stop | Out-Null 
         }
         
         $logFile = "$centralLogPath\CleanupLog.txt"
         
-        # Log rotation: archive if >5MB
-        if (Test-Path $logFile -and (Get-Item $logFile).Length -gt 5MB) {
+        # --- FIX STARTS HERE ---
+
+        # 1. Ensure the log file exists. This prevents the 'Get-Item' error on the next line.
+        if (!(Test-Path $logFile)) {
+            Write-Output "Creating new log file: $logFile"
+            New-Item -Path $logFile -ItemType File | Out-Null
+        }
+
+        # 2. Log rotation: archive if >5MB (now safe to check with Get-Item)
+        if ((Get-Item $logFile).Length -gt 5MB) {
+            Write-Output "Log file exceeds 5MB, archiving."
             $archiveName = "$centralLogPath\CleanupLog_$(Get-Date -Format yyyyMMddHHmmss).txt"
             Rename-Item $logFile $archiveName
+            # The next Add-Content command will create the new, empty CleanupLog.txt
         }
+        
+        # --- FIX ENDS HERE ---
 
         Add-Content $logFile "`n=== Cleanup started on $hostname at $(Get-Date) ==="
         Write-Output "Logging to central share: $logFile"
@@ -59,6 +73,7 @@ if (-not [string]::IsNullOrEmpty($serverInput)) {
         Write-Warning "Failed to access central log path ($serverInput). Falling back to local C:\Temp logging."
         $serverInput = $null # Clear input to force local fallback logic
     }
+
 }
 
 # This 'else' covers: 
