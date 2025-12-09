@@ -56,7 +56,7 @@ This repository contains PowerShell scripts and a batch wrapper designed to help
 1. Download or clone this repo.
 2. Double‑click `RunCleanup.bat`.
    - It will attempt to download the latest script from GitHub.
-   - If an older download is found, the wrapper strips the legacy `[CmdletBinding()]` line (including BOM/whitespace variations) before execution to prevent parser errors.
+   - If an older download is found, the wrapper strips the legacy `[CmdletBinding()]` line (including BOM/whitespace variations) before execution to prevent parser errors. The sanitization now matches both `[CmdletBinding]` and `[CmdletBinding()]` forms.
    - If download fails, it falls back to the local copy.
 
 ---

@@ -33,12 +33,14 @@ powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePoin
 if %ERRORlevel% EQU 0 (
     echo Running downloaded script from %TEMP%...
     :: Strip legacy CmdletBinding attribute that caused parser errors in older downloads (handles BOM/whitespace variants)
-    powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "try { $raw = Get-Content -Path '%ScriptPath%' -Raw; $sanitized = $raw -replace '(?im)^[\uFEFF\s]*\[CmdletBinding\]\s*\r?\n', ''; if ($sanitized -ne $raw) { Set-Content -Path '%ScriptPath%' -Value $sanitized -Encoding UTF8; Write-Host 'Removed legacy CmdletBinding attribute from downloaded script.' } } catch { Write-Host 'Warning: Could not sanitize downloaded script - ' + $_.Exception.Message }"
+    powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "try { $raw = Get-Content -Path '%ScriptPath%' -Raw; $sanitized = $raw -replace '(?im)^[\uFEFF\s]*\[CmdletBinding(?:\(\))?\]\s*\r?\n', ''; if ($sanitized -ne $raw) { Set-Content -Path '%ScriptPath%' -Value $sanitized -Encoding UTF8; Write-Host 'Removed legacy CmdletBinding attribute from downloaded script.' } } catch { Write-Host 'Warning: Could not sanitize downloaded script - ' + $_.Exception.Message }"
     powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ScriptPath%"
 ) else (
     echo Attempting to run local script...
     if exist "%LocalScriptPath%" (
         echo Running local script from same folder: %LocalScriptPath%
+        :: Sanitize local copy as well in case it still has the legacy header
+        powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "try { $raw = Get-Content -Path '%LocalScriptPath%' -Raw; $sanitized = $raw -replace '(?im)^[\uFEFF\s]*\[CmdletBinding(?:\(\))?\]\s*\r?\n', ''; if ($sanitized -ne $raw) { Set-Content -Path '%LocalScriptPath%' -Value $sanitized -Encoding UTF8; Write-Host 'Removed legacy CmdletBinding attribute from local script.' } } catch { Write-Host 'Warning: Could not sanitize local script - ' + $_.Exception.Message }"
         powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%LocalScriptPath%"
     ) else (
         echo.
