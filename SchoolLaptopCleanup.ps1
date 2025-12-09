@@ -1,4 +1,3 @@
-# Simpler header for maximum compatibility on older PowerShell hosts
 param(
     [string]$Mode = 'Automatic',
     [int]$DefragPasses = 3,
