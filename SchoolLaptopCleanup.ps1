@@ -1,16 +1,6 @@
 # SchoolLaptopCleanup.ps1
 # Run as Administrator
 
-# TODO: Verify error handling logs both locally and to server summary file
-# TODO: Confirm hostname is correctly recorded in logs and central CSV
-# TODO: Manually log into \\YourServer\CleanupLogs to ensure write permissions
-# TODO: Update README if features change (Dry Run, server logging, hostname tracking)
-# TODO: Add .gitignore entries for CleanupLog.txt and DriverReport.txt
-# TODO: Confirm RunCleanup.bat points to correct GitHub raw URL
-# TODO: Run cleanmgr /sageset:1 once manually to configure cleanup options
-# TODO: Consider adding per‑step success/failure logging to server CSV
-# TODO: Decide if you want to automate via Task Scheduler (later)
-
 param([switch]$DryRun)
 
 Write-Output "=== Starting School Laptop Cleanup ==="
@@ -33,25 +23,19 @@ $hostname = $env:COMPUTERNAME
 $logPath = "C:\Temp"
 if (!(Test-Path $logPath)) { New-Item -ItemType Directory -Path $logPath | Out-Null }
 $logFile = "$logPath\CleanupLog.txt"
-Add-Content $logFile "`n=== Cleanup started on $hostname at $(Get-Date) ==="
 
-# Prepare server summary file
-$serverPath = "\\YourServer\CleanupLogs"
-$summaryFile = "$serverPath\Summary.csv"
-
-# Check server connectivity
-if (-not (Test-Connection -ComputerName "YourServer" -Count 1 -Quiet)) {
-    Write-Output "WARNING: Server not reachable. Logs will only be saved locally."
+# Log rotation: archive if >5MB
+if (Test-Path $logFile -and (Get-Item $logFile).Length -gt 5MB) {
+    $archiveName = "$logPath\CleanupLog_$(Get-Date -Format yyyyMMddHHmmss).txt"
+    Rename-Item $logFile $archiveName
 }
+
+Add-Content $logFile "`n=== Cleanup started on $hostname at $(Get-Date) ==="
 
 function Log-Step($step, $status, $error="") {
     $line = "$hostname,$step,$status,$(Get-Date),$error"
     Add-Content $logFile $line
-    try {
-        Add-Content $summaryFile $line
-    } catch {
-        Write-Output "Could not write $step result to server summary file."
-    }
+    Write-Output $line
 }
 
 try {
@@ -61,15 +45,23 @@ try {
         Get-CimInstance Win32_UserProfile | Where-Object {
             $_.LocalPath -notlike "*Administrator" -and
             $_.LocalPath -notlike "*Default*" -and
-            $_.LocalPath -notlike "*Public*"
+            $_.LocalPath -notlike "*Public*" -and
+            $_.LocalPath -notlike "*systemprofile*" -and
+            $_.LocalPath -notlike "*LocalService*" -and
+            $_.LocalPath -notlike "*NetworkService*" -and
+            $_.LocalPath -notlike "*WDAGUtilityAccount*"
         } | ForEach-Object {
-            if ($DryRun) {
-                Write-Output "[DRY RUN] Would delete profile: $($_.LocalPath)"
-                Add-Content $logFile "[DRY RUN] Would delete profile: $($_.LocalPath)"
-            } else {
-                Write-Output "Deleting profile: $($_.LocalPath)"
-                Remove-CimInstance $_
-                Add-Content $logFile "Deleted profile: $($_.LocalPath)"
+            try {
+                if ($DryRun) {
+                    Write-Output "[DRY RUN] Would delete profile: $($_.LocalPath)"
+                    Add-Content $logFile "[DRY RUN] Would delete profile: $($_.LocalPath)"
+                } else {
+                    Write-Output "Deleting profile: $($_.LocalPath)"
+                    Remove-CimInstance $_
+                    Add-Content $logFile "Deleted profile: $($_.LocalPath)"
+                }
+            } catch {
+                Log-Step "ProfileDelete" "Error" $_.Exception.Message
             }
         }
         Log-Step "Profiles" "Success"
@@ -80,7 +72,11 @@ try {
     # 2. Group Policy update
     Write-Output "Running Group Policy Update..."
     try {
-        gpupdate /force | Out-Null
+        if ($DryRun) {
+            Write-Output "[DRY RUN] Would run gpupdate /force"
+        } else {
+            gpupdate /force | Out-Null
+        }
         Log-Step "GroupPolicy" "Success"
     } catch {
         Log-Step "GroupPolicy" "Error" $_.Exception.Message
@@ -89,8 +85,12 @@ try {
     # 3. Windows Update
     Write-Output "Starting Windows Update..."
     try {
-        Start-Process "wuauclt.exe" -ArgumentList "/detectnow" -Wait
-        Start-Process "wuauclt.exe" -ArgumentList "/updatenow" -Wait
+        if ($DryRun) {
+            Write-Output "[DRY RUN] Would run Windows Update"
+        } else {
+            Start-Process "wuauclt.exe" -ArgumentList "/detectnow" -Wait
+            Start-Process "wuauclt.exe" -ArgumentList "/updatenow" -Wait
+        }
         Log-Step "WindowsUpdate" "Success"
     } catch {
         Log-Step "WindowsUpdate" "Error" $_.Exception.Message
@@ -99,7 +99,16 @@ try {
     # 4. Disk Cleanup
     Write-Output "Running Disk Cleanup..."
     try {
-        cleanmgr /sagerun:1
+        if ($DryRun) {
+            Write-Output "[DRY RUN] Would run cleanmgr /sagerun:1"
+        } else {
+            $sagesetConfigured = Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches"
+            if (-not $sagesetConfigured) {
+                Write-Output "WARNING: Disk Cleanup options not configured. Run 'cleanmgr /sageset:1' manually first."
+                Add-Content $logFile "WARNING: Disk Cleanup options not configured."
+            }
+            cleanmgr /sagerun:1
+        }
         Log-Step "DiskCleanup" "Success"
     } catch {
         Log-Step "DiskCleanup" "Error" $_.Exception.Message
@@ -108,7 +117,11 @@ try {
     # 5. Defrag
     Write-Output "Running Defrag..."
     try {
-        defrag C: /U /V
+        if ($DryRun) {
+            Write-Output "[DRY RUN] Would run defrag C:"
+        } else {
+            defrag C: /U /V
+        }
         Log-Step "Defrag" "Success"
     } catch {
         Log-Step "Defrag" "Error" $_.Exception.Message
@@ -117,8 +130,12 @@ try {
     # 6. Driver check
     Write-Output "Checking installed drivers..."
     try {
-        driverquery /V /FO Table > "$logPath\DriverReport.txt"
-        Write-Output "Driver report saved to $logPath\DriverReport.txt"
+        if ($DryRun) {
+            Write-Output "[DRY RUN] Would run driverquery"
+        } else {
+            driverquery /V /FO CSV > "$logPath\DriverReport.csv"
+            Write-Output "Driver report saved to $logPath\DriverReport.csv"
+        }
         Log-Step "DriverReport" "Success"
     } catch {
         Log-Step "DriverReport" "Error" $_.Exception.Message
@@ -126,8 +143,12 @@ try {
 
     # --- Restore screen timeout settings ---
     Write-Output "Restoring screen timeout settings..."
-    powercfg /change monitor-timeout-ac $acTimeout
-    powercfg /change monitor-timeout-dc $dcTimeout
+    if ($DryRun) {
+        Write-Output "[DRY RUN] Would restore screen timeout settings"
+    } else {
+        powercfg /change monitor-timeout-ac $acTimeout
+        powercfg /change monitor-timeout-dc $dcTimeout
+    }
     Log-Step "ScreenTimeoutRestore" "Success"
 
     Write-Output "=== Cleanup Complete ==="

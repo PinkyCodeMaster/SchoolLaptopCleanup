@@ -14,9 +14,13 @@ powershell -Command ^
 if exist "%TEMP%\SchoolLaptopCleanup.ps1" (
     echo Running downloaded script...
     powershell.exe -ExecutionPolicy Bypass -File "%TEMP%\SchoolLaptopCleanup.ps1"
-) else (
+) else if exist "%~dp0SchoolLaptopCleanup.ps1" (
     echo Running local script from same folder...
     powershell.exe -ExecutionPolicy Bypass -File "%~dp0SchoolLaptopCleanup.ps1"
+) else (
+    echo ERROR: No cleanup script found.
+    pause
+    exit /b 1
 )
 
 echo ============================================
