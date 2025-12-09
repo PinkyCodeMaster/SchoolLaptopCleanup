@@ -10,7 +10,7 @@ if (-not $PSVersionTable) {
     School Laptop Cleanup Script - Interactive Edition
 .DESCRIPTION
     Prompts the user step-by-step for each cleanup task (Y/N).
-    Allows custom defrag passes (1–6).
+    Allows custom defrag passes (1-6).
 .NOTES
     Author: PinkyCodeMaster
     License: MIT
@@ -20,7 +20,6 @@ Write-Output "=== Starting School Laptop Cleanup (Interactive Edition) ==="
 
 # --- Prevent screen from going dark ---
 Write-Output "Disabling screen timeout temporarily..."
-# Simplify: set to 10 minutes as safe default, restore later
 $acTimeout = 10
 $dcTimeout = 10
 powercfg /change monitor-timeout-ac 0
@@ -137,7 +136,7 @@ try {
     # 5. Defrag
     $choice = Read-Host "Run Defrag? (Y/N)"
     if ($choice -eq "Y") {
-        $passes = Read-Host "How many defrag passes (1–6)?"
+        $passes = Read-Host "How many defrag passes (1-6)?"
         try {
             if ($passes -match '^[1-6]$') {
                 $driveType = (Get-PhysicalDisk | Where-Object DeviceID -eq 0).MediaType
