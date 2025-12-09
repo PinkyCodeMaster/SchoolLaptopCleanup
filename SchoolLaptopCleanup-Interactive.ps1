@@ -34,7 +34,7 @@ if (Test-Path $logFile -and (Get-Item $logFile).Length -gt 5MB) {
 Add-Content $logFile "`n=== Interactive Cleanup started on $hostname at $(Get-Date) ==="
 
 function Log-Step($step, $status, $error="") {
-    $line = "`"$hostname`","`"$step`","`"$status`",""$(Get-Date)`","`"$error`""
+    $line = '"' + $hostname + '","' + $step + '","' + $status + '","' + (Get-Date) + '","' + $error + '"'
     Add-Content $logFile $line
     Write-Output $line
 }
@@ -55,7 +55,7 @@ try {
             } | ForEach-Object {
                 Write-Output "Deleting profile: $($_.LocalPath)"
                 Remove-CimInstance $_
-                Add-Content $logFile "Deleted profile: $($_.LocalPath)"
+                Add-Content $logFile '"Deleted profile","' + $_.LocalPath + '"'
             }
             Log-Step "Profiles" "Success"
         } catch {

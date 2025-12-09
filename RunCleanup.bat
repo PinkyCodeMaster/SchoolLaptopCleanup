@@ -1,14 +1,18 @@
 @echo off
+setlocal
+title School Laptop Cleanup
+cls
 echo ============================================
 echo School Laptop Cleanup - GitHub Version
 echo ============================================
 
 :: Force TLS 1.2 and download latest script from GitHub
 echo Downloading latest cleanup script from GitHub...
-powershell -NoLogo -NoProfile -Command ^
-  "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ^
-   try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/refs/heads/main/SchoolLaptopCleanup.ps1' -OutFile $env:TEMP\SchoolLaptopCleanup.ps1 -ErrorAction Stop; exit 0 } ^
-   catch { Write-Output 'Download failed, using local script if available...'; exit 1 }"
+powershell -NoLogo -NoProfile -Command "& { 
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; 
+    try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PinkyCodeMaster/SchoolLaptopCleanup/refs/heads/main/SchoolLaptopCleanup.ps1' -OutFile (Join-Path $env:TEMP 'SchoolLaptopCleanup.ps1') -ErrorAction Stop; exit 0 } 
+    catch { Write-Output 'Download failed, using local script if available...'; exit 1 } 
+}"
 
 :: Check if download succeeded
 if exist "%TEMP%\SchoolLaptopCleanup.ps1" (
@@ -20,6 +24,7 @@ if exist "%TEMP%\SchoolLaptopCleanup.ps1" (
 ) else (
     echo ERROR: No cleanup script found.
     pause
+    endlocal
     exit /b 1
 )
 
@@ -27,3 +32,4 @@ echo ============================================
 echo Cleanup finished.
 timeout /t 2 >nul
 pause
+endlocal

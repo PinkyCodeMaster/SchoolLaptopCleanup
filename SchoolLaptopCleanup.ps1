@@ -43,7 +43,7 @@ if (Test-Path $logFile -and (Get-Item $logFile).Length -gt 5MB) {
 Add-Content $logFile "`n=== Cleanup started on $hostname at $(Get-Date) ==="
 
 function Log-Step($step, $status, $error="") {
-    $line = "`"$hostname`","`"$step`","`"$status`",""$(Get-Date)`","`"$error`""
+    $line = '"' + $hostname + '","' + $step + '","' + $status + '","' + (Get-Date) + '","' + $error + '"'
     Add-Content $logFile $line
     Write-Output $line
 }
@@ -63,11 +63,11 @@ try {
         } | ForEach-Object {
             if ($DryRun) {
                 Write-Output "[DRY RUN] Would delete profile: $($_.LocalPath)"
-                Add-Content $logFile "[DRY RUN] Would delete profile: $($_.LocalPath)"
+                Add-Content $logFile '"[DRY RUN]","Would delete profile","' + $_.LocalPath + '"'
             } else {
                 Write-Output "Deleting profile: $($_.LocalPath)"
                 Remove-CimInstance $_
-                Add-Content $logFile "Deleted profile: $($_.LocalPath)"
+                Add-Content $logFile '"Deleted profile","' + $_.LocalPath + '"'
             }
         }
         Log-Step "Profiles" ($DryRun ? "Skipped (DryRun)" : "Success")
@@ -121,7 +121,7 @@ try {
         } else {
             if (-not (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches")) {
                 Write-Warning "Disk Cleanup options not configured. Run 'cleanmgr /sageset:1' manually first."
-                Add-Content $logFile "WARNING: Disk Cleanup options not configured."
+                Add-Content $logFile "WARNING: Disk Cleanup may not run unless 'cleanmgr /sageset:1' has been configured."
             }
             cleanmgr /sagerun:1
             Log-Step "DiskCleanup" "Success"
